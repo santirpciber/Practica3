@@ -72,7 +72,7 @@ config.vm.define :manager, primary: true  do |manager|
         vb.memory = "2048"
       end
     end
-    
+
     config.vm.define "worker02" do |worker|
         worker.vm.box = vm_box
         worker.vm.box_check_update = true
@@ -87,6 +87,5 @@ config.vm.define :manager, primary: true  do |manager|
           vb.memory = "2048"
         end
       end
-  end
  
 end
