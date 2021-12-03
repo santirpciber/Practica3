@@ -26,7 +26,15 @@ echo "/mnt/nfs 10.100.109.201(rw,sync,no_root_squash,no_subtree_check)" >> /etc/
 echo "/mnt/nfs 10.100.109.202(rw,sync,no_root_squash,no_subtree_check)" >> /etc/exports
 systemctl restart nfs-kernel-server
 SCRIPT
- 
+
+$worker_nfs = <<SCRIPT
+apt-get update
+apt-get install -y nfs-common
+mkdir /mnt/nfs
+echo "10.100.109.200:/mnt/nfs    /mnt/nfs   nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0" >> /etc/fstab
+mount -a
+SCRIPT
+
 Vagrant.configure('2') do |config|
  
   vm_box = 'ubuntu/focal64'
@@ -57,6 +65,7 @@ Vagrant.configure('2') do |config|
 	  worker.vm.disk :disk, size: "50GB", primary: true
       worker.vm.network :private_network, ip: "10.100.199.20#{i}"
       worker.vm.hostname = "worker0#{i}"
+      worker.vm.provision "shell", inline: $worker_nfs, privileged: true
       worker.vm.provision "shell", inline: $install_docker_script, privileged: true
       worker.vm.provision "shell", inline: $worker_script, privileged: true
       worker.vm.provider "virtualbox" do |vb|
