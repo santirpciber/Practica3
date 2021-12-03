@@ -1,21 +1,30 @@
 $install_docker_script = <<SCRIPT
 echo Installing Docker...
 curl -sSL https://get.docker.com/ | sh
-usermod -aG docker ubuntu
-cat /vagrant/id_rsa.pub >> /home/ubuntu/.ssh/authorized_keys
+usermod -aG docker vagrant
 SCRIPT
  
 $manager_script = <<SCRIPT
 echo Swarm Init...
 docker swarm init --listen-addr 10.100.199.200:2377 --advertise-addr 10.100.199.200:2377
-docker swarm join-token --quiet worker > /vagrant/worker_token
+docker swarm join-token --quiet worker > /mnt/nfs/worker_token
 curl -L https://downloads.portainer.io/portainer-agent-stack.yml -o portainer-agent-stack.yml
 docker stack deploy -c portainer-agent-stack.yml portainer
 SCRIPT
  
 $worker_script = <<SCRIPT
 echo Swarm Join...
-docker swarm join --token $(cat /vagrant/worker_token) 10.100.199.200:2377
+docker swarm join --token $(cat /mnt/nfs/worker_token) 10.100.199.200:2377
+SCRIPT
+
+$manager_nfs = <<SCRIPT
+apt-get update
+apt-get install -y nfs-kernel-server
+mkdir /mnt/nfs
+chown nobody:nogroup /mnt/nfs
+echo "/mnt/nfs 10.100.109.201(rw,sync,no_root_squash,no_subtree_check)" >> /etc/exports
+echo "/mnt/nfs 10.100.109.202(rw,sync,no_root_squash,no_subtree_check)" >> /etc/exports
+systemctl restart nfs-kernel-server
 SCRIPT
  
 Vagrant.configure('2') do |config|
@@ -32,7 +41,7 @@ Vagrant.configure('2') do |config|
     manager.vm.network :forwarded_port, guest: 9443, host: 9443
 	manager.vm.network :forwarded_port, guest: 9000, host: 9000
     manager.vm.hostname = "manager"
-    manager.vm.synced_folder ".", "/vagrant"
+    manager.vm.provision "shell", inline: $manager_nfs, privileged: true
     manager.vm.provision "shell", inline: $install_docker_script, privileged: true
     manager.vm.provision "shell", inline: $manager_script, privileged: true
     manager.vm.provider "virtualbox" do |vb|
@@ -41,14 +50,13 @@ Vagrant.configure('2') do |config|
     end
   end
  
-  (1..3).each do |i|
+  (1..2).each do |i|
     config.vm.define "worker0#{i}" do |worker|
       worker.vm.box = vm_box
       worker.vm.box_check_update = true
 	  worker.vm.disk :disk, size: "50GB", primary: true
       worker.vm.network :private_network, ip: "10.100.199.20#{i}"
       worker.vm.hostname = "worker0#{i}"
-      worker.vm.synced_folder ".", "/vagrant"
       worker.vm.provision "shell", inline: $install_docker_script, privileged: true
       worker.vm.provision "shell", inline: $worker_script, privileged: true
       worker.vm.provider "virtualbox" do |vb|
