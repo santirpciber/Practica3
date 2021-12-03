@@ -39,8 +39,8 @@ Vagrant.configure('2') do |config|
  
   vm_box = 'ubuntu/focal64'
  
- 
-  config.vm.define :manager, primary: true  do |manager|
+config.vm.boot_timeout = 300
+config.vm.define :manager, primary: true  do |manager|
     manager.vm.box = vm_box
     manager.vm.box_check_update = true
 	manager.vm.disk :disk, size: "100GB", primary: true
