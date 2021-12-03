@@ -31,7 +31,7 @@ $worker_nfs = <<SCRIPT
 apt-get update
 apt-get install -y nfs-common
 mkdir /mnt/nfs
-echo "10.100.109.200:/mnt/nfs    /mnt/nfs   nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0" >> /etc/fstab
+echo "10.100.109.200:/mnt/nfs   /mnt/nfs   nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0" >> /etc/fstab
 mount -a
 SCRIPT
 
@@ -58,21 +58,35 @@ config.vm.define :manager, primary: true  do |manager|
     end
   end
  
-  (1..2).each do |i|
-    config.vm.define "worker0#{i}" do |worker|
+    config.vm.define "worker01" do |worker|
       worker.vm.box = vm_box
       worker.vm.box_check_update = true
 	  worker.vm.disk :disk, size: "50GB", primary: true
-      worker.vm.network :private_network, ip: "10.100.199.20#{i}"
-      worker.vm.hostname = "worker0#{i}"
+      worker.vm.network :private_network, ip: "10.100.199.201"
+      worker.vm.hostname = "worker01"
       worker.vm.provision "shell", inline: $worker_nfs, privileged: true
       worker.vm.provision "shell", inline: $install_docker_script, privileged: true
       worker.vm.provision "shell", inline: $worker_script, privileged: true
       worker.vm.provider "virtualbox" do |vb|
-        vb.name = "worker0#{i}"
+        vb.name = "worker01"
         vb.memory = "2048"
       end
     end
+    
+    config.vm.define "worker02" do |worker|
+        worker.vm.box = vm_box
+        worker.vm.box_check_update = true
+        worker.vm.disk :disk, size: "50GB", primary: true
+        worker.vm.network :private_network, ip: "10.100.199.202"
+        worker.vm.hostname = "worker02"
+        worker.vm.provision "shell", inline: $worker_nfs, privileged: true
+        worker.vm.provision "shell", inline: $install_docker_script, privileged: true
+        worker.vm.provision "shell", inline: $worker_script, privileged: true
+        worker.vm.provider "virtualbox" do |vb|
+          vb.name = "worker02"
+          vb.memory = "2048"
+        end
+      end
   end
  
 end
