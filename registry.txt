@@ -1,0 +1,37 @@
+openssl req -newkey rsa:2048 -nodes -sha256 -keyout /mnt/nfs/cert/domain.key \
+-x509 -addext "subjectAltName = DNS:registry.pps.local"  -days 3650 -out /mnt/nfs/cert/domain.crt \
+-subj "/C=ES/ST=Spain/L=Zaragoza/O=PPS SL/OU=IT Department/CN=*.pps.local"
+
+docker service create \
+--publish 5000:5000 \
+--name registry \
+--constraint 'node.role==manager' \
+--mount type=bind,src=/mnt/nfs/registry,dst=/var/lib/registry \
+--mount type=bind,src=/mnt/nfs/cert,dst=/cert \
+-e REGISTRY_HTTP_ADDR=0.0.0.0:5000 \
+-e REGISTRY_HTTP_TLS_CERTIFICATE=/cert/domain.crt \
+-e REGISTRY_HTTP_TLS_KEY=/cert/domain.key \
+--replicas 1 \
+registry:latest
+
+
+mkdir -p /etc/docker/certs.d/registry.pps.local\:5000 
+cp /mnt/nfs/cert/domain.crt /etc/docker/certs.d/registry.pps.local\:5000/ca.crt
+echo "10.100.199.200   registry.pps.local" >> /etc/hosts
+
+\*web de gatetes*\
+
+docker pull unfor19/docker-cats
+docker tag unfor19/docker-cats:latest registry.pps.local:5000/gatitos:1
+
+docker pull mikesir87/cats
+docker tag mikesir87/cats:latest registry.pps.local:5000/gatitos:2
+
+docker image push registry.pps.local:5000/gatitos:1
+docker image push registry.pps.local:5000/gatitos:2
+curl https://registry.pps.local:5000/v2/_catalog -k
+curl https://registry.pps.local:5000/v2/gatitos/tags/list -k
+ 
+docker service create --publish 80:8080 --name gatitos  -e APP_NAME=dark -e FROM_AUTHOR=darker --replicas 2 registry.pps.local:5000/gatitos:latest
+
+docker service create --publish 80:5000 --name gatitos  --replicas 1 registry.pps.local:5000/gatitos:2
