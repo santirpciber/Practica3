@@ -1,5 +1,6 @@
 docker service create \
---publish 4000:5000 \
+--publish 8080:8080 \
+--publish 50000:50000 \
 --name jenkins \
 --constraint 'node.role==manager' \
 --mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
@@ -7,4 +8,4 @@ docker service create \
 --mount type=bind,src=/root/.ssh,dst=/var/jenkins_home/.ssh \
 --host "registry.pps.local:10.100.199.200" \
 --replicas 1 \
-jenkins/jenkins
+registry.pps.local:5000/myjenkins:1
